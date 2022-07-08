@@ -1,0 +1,4 @@
+*
+!/.gitignore
+!/ca.conf
+!/cert-gen.sh

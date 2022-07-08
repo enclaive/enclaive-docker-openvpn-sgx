@@ -1,0 +1,85 @@
+loader.entrypoint = "file:{{ gramine.libos }}"
+#libos.entrypoint = "/usr/sbin/openvpn"
+libos.entrypoint = "/usr/bin/bash"
+
+########################################
+loader.insecure__use_cmdline_argv = true
+
+loader.log_level = "all"
+loader.log_file = "log.txt"
+
+#sgx.file_check_policy = "allow_all_but_log"
+########################################
+
+loader.env.LD_LIBRARY_PATH = "/lib:{{ arch_libdir }}"
+loader.env.LD_PRELOAD = "/lib/libsecret_prov_attest.so"
+
+loader.env.SECRET_PROVISION_CONSTRUCTOR = "1"
+loader.env.SECRET_PROVISION_SET_KEY = "default"
+loader.env.SECRET_PROVISION_CA_CHAIN_PATH = "/usr/local/share/ca-certificates/ca.crt"
+loader.env.SECRET_PROVISION_SERVERS = "provisioner:4433"
+
+fs.mounts = [
+  { path = "/tmp", uri = "file:/tmp", type = "tmpfs" },
+  { path = "/lib", uri = "file:{{ gramine.runtimedir() }}" },
+  { path = "{{ arch_libdir }}", uri = "file:{{ arch_libdir }}" },
+  { path = "/etc", uri = "file:/etc" },
+  { path = "/usr/sbin", uri = "file:/usr/sbin" },
+  { path = "/usr/bin", uri = "file:/usr/bin" },
+  { path = "/dev/net", uri = "file:/dev/net" },
+
+  { path = "/files", uri = "file:files", type = "encrypted", key_name = "default" },
+
+  { path = "/usr/local/etc/localtime", uri = "file:/etc/localtime" },
+  { path = "/usr/local/share/ca-certificates/ca.crt", uri = "file:/usr/local/share/ca-certificates/ca.crt" },
+
+# gramine looks for them in the wrong place
+# because openvpn creates the env-array from scratch
+# but even after adding them, the application kills itself
+# with "stack smashing detected"
+#
+# using "setenv" in ovpn-config results in ip still using
+# netlink sockets which are not implemented
+#
+# kept here for nice jinja templating options
+#
+#{% for lib in ["libbpf.so.0", "libelf.so.1", "libmnl.so.0", "libbsd.so.0", "libcap.so.2", "libdl.so.2", "libc.so.6", "libz.so.1", "libmd.so.0"] %}
+#  { path = "/usr/local/lib/{{ lib }}", uri = "file:{{ arch_libdir }}/{{ lib }}" },
+#{% endfor %}
+]
+
+sgx.remote_attestation = true
+sgx.ra_client_spid = ""
+sgx.ra_client_linkable = false
+
+sgx.isvprodid = 1337
+sgx.isvsvn    = 42
+
+sgx.debug = false
+sgx.nonpie_binary = true
+sgx.enclave_size = "256M"
+sgx.thread_num = 4
+
+sgx.trusted_files = [
+  "file:{{ gramine.libos }}",
+  "file:{{ gramine.runtimedir() }}/",
+  "file:{{ arch_libdir }}/",
+  "file:/usr/sbin/openvpn",
+
+  "file:/usr/bin/",
+
+  "file:./",
+
+  "file:/etc/gai.conf",
+  "file:/etc/nsswitch.conf",
+  "file:/etc/host.conf",
+  "file:/etc/group",
+  "file:/etc/passwd",
+
+  "file:/usr/local/share/ca-certificates/ca.crt",
+]
+
+sgx.allowed_files = [
+  "file:/etc/resolv.conf",
+  "file:/etc/hosts",
+]

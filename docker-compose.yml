@@ -1,0 +1,54 @@
+version: '2'
+
+services:
+
+  pccs:
+    image: enclaive/sgx-pccs
+    build:
+      context: pccs
+      dockerfile: Dockerfile
+    volumes:
+      - "./tls/pccs.key:/opt/intel/sgx-dcap-pccs/ssl_key/private.pem:ro"
+      - "./tls/pccs.crt:/opt/intel/sgx-dcap-pccs/ssl_key/file.crt:ro"
+    environment:
+      - APIKEY=${PCCS_APIKEY}
+
+  provisioner:
+    image: enclaive/sgx-provisioner
+    build:
+      context: provisioner
+      dockerfile: Dockerfile
+    volumes:
+      - "./sgx_default_qcnl.conf:/etc/sgx_default_qcnl.conf"
+      - "./tls/provisioner.key:/server.key:ro"
+      - "./tls/provisioner.crt:/server.crt:ro"
+      - "./tls/ca.crt:/usr/local/share/ca-certificates/ca.crt:ro"
+    devices:
+      - "/dev/sgx/enclave:/dev/sgx/enclave"
+      - "/dev/sgx/enclave:/dev/sgx_enclave"
+    environment:
+      - KEY_DEFAULT=${KEY_DEFAULT}
+      - MRENCLAVE=${MRENCLAVE}
+      - MRSIGNER=${MRSIGNER}
+      - ISV_PRODID=${ISV_PRODID}
+      - ISV_SVN=${ISV_SVN}
+
+  ovpn:
+    image: enclaive/openvpn-sgx
+    build:
+      context: .
+      dockerfile: Dockerfile
+    cap_add:
+      - NET_ADMIN
+    volumes:
+      - "./sgx_default_qcnl.conf:/etc/sgx_default_qcnl.conf"
+      - "./manifest/:/manifest/"
+      - "./files/:/manifest/files/"
+      - "./tls/openvpn.crt:/manifest/openvpn.crt:ro"
+      - "./tls/ca.crt:/usr/local/share/ca-certificates/ca.crt:ro"
+    devices:
+      - "/dev/sgx/enclave:/dev/sgx/enclave"
+      - "/dev/sgx/enclave:/dev/sgx_enclave"
+      - "/dev/sgx_provision:/dev/sgx_provision"
+    ports:
+      - "1194:1194/udp"
